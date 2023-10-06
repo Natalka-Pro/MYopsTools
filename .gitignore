@@ -1,1 +1,3 @@
 presentations/
+venv/
+__pycache__/
