@@ -1,3 +1,5 @@
 presentations/
 venv/
 __pycache__/
+model.pth
+labels.csv
