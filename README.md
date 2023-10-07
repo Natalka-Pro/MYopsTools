@@ -1,8 +1,27 @@
 ## [MLOps](https://github.com/girafe-ai/mlops)
 
-### Первая домашняя работа
+## Инструкция по запуску пакета в чистом окружении:
+```bash
+git clone https://github.com/Natalka-Pro/MYopsTools.git
+cd MYopsTools/
+```
 
-Текст задания:
+```bash
+virtualenv -p /usr/bin/python3.11 venv_name
+source venv_name/bin/activate
+```
+
+```bash
+poetry install
+pre-commit install
+pre-commit run -a
+python MYopsTools/train.py
+python MYopsTools/infer.py
+```
+
+## Первая домашняя работа
+**Текст задания:**
+
 Необходимо создать открытый репозиторий, в нём создать пакет на Python, который будет являться валидным с точки зрения пакетирования и решать какую-либо задачу машинного обучения (сейчас не так важно какую, для примера можете взять [классификацию кошек против собак](https://github.com/girafe-ai/ml-course/blob/master/week0_10_cnn/week10_cnn_seminar.ipynb) из нашего курса по МЛ). Выбирайте задачу, которая у вас будет обучаться не более 5 минут!!! Иначе и вы, и мы будем долго ждать.
 
 Под "решать" понимается дву вещи:
