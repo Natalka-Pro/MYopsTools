@@ -1,143 +1,18 @@
 from datetime import datetime
 
-import matplotlib.pyplot as plt
-import numpy as np
 import torch
 import torch.nn as nn
-from torchvision import datasets, transforms
 from tqdm.auto import tqdm
+
+from .dataloader import MnistData
+from .models import AlexNet
+from .utils import get_accuracy
 
 LEARNING_RATE = 0.001
 BATCH_SIZE = 64
 N_EPOCHS = 5
 N_CLASSES = 10
 RANDOM_SEED = 42
-
-
-class AlexNet(nn.Module):
-    def __init__(self, num_classes: int = 10, dropout: float = 0.5) -> None:
-        super(AlexNet, self).__init__()
-
-        self.features = nn.Sequential(
-            nn.Conv2d(3, 4, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2),
-        )
-
-        self.classifier = nn.Sequential(
-            nn.Dropout(),
-            nn.Linear(4 * 8 * 8, 32),
-            nn.ReLU(inplace=True),
-            nn.Linear(32, num_classes),
-        )
-
-    def forward(self, x):
-        x = self.features(x)
-        x = x.view(x.size(0), -1)
-        x = self.classifier(x)
-        return x
-
-
-def number_of_parameters(model):
-    return f"{sum(p.numel() for p in model.parameters() if p.requires_grad)} \
-        parameters"
-
-
-def dataset_loaders(train):
-    resize = transforms.Resize((32, 32))
-    to_rgb = transforms.Lambda(lambda image: image.convert("RGB"))
-    normalize = transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-    )
-    transform = transforms.Compose(
-        [resize, to_rgb, transforms.ToTensor(), normalize]
-    )
-
-    if train:
-        dataset_train = datasets.MNIST(
-            root="./data", train=True, download=True, transform=transform
-        )
-        train_loader = torch.utils.data.DataLoader(
-            dataset=dataset_train, batch_size=BATCH_SIZE, shuffle=True
-        )
-        return train_loader
-    else:
-        dataset_test = datasets.MNIST(
-            root="./data", train=False, download=True, transform=transform
-        )
-        test_loader = torch.utils.data.DataLoader(
-            dataset=dataset_test, batch_size=BATCH_SIZE, shuffle=False
-        )
-        return test_loader
-
-
-def plot_dataset(loader, title, N_ROWS=5, N_COLUMNS=10):
-    """
-    Function for plotting multiple images from dataset
-    """
-    fig = plt.figure(figsize=(N_COLUMNS * 1.3, N_ROWS * 1.3))
-    fig.suptitle(title, fontsize=20)
-
-    for index in range(1, N_COLUMNS * N_ROWS + 1):
-        plt.subplot(N_ROWS, N_COLUMNS, index)
-        plt.axis("off")
-        image, label = loader.dataset.__getitem__(index)
-        plt.imshow(image.permute(1, 2, 0).numpy())
-
-
-def plot_losses(train_losses, test_losses, train_accuracies, test_accuracies):
-    """
-    Function for plotting train/test losses and accuracies
-    """
-    plt.style.use("seaborn")
-
-    train_losses = np.array(train_losses)
-    test_loss = np.array(test_losses)
-    train_acc = np.array(train_accuracies)
-    test_acc = np.array(test_accuracies)
-
-    plt.figure(figsize=(13, 6))
-    plt.subplot(1, 2, 1)
-    plt.plot(train_losses, color="blue", label="Training loss")
-    plt.plot(test_loss, color="red", label="Test loss")
-    plt.title("Loss over epochs", fontsize=13)
-    plt.xlabel("Epoch", fontsize=13)
-    plt.ylabel("Loss", fontsize=13)
-    plt.legend()
-
-    plt.subplot(1, 2, 2)
-    plt.plot(train_acc, color="green", label="Training accuracy")
-    plt.plot(test_acc, color="orangered", label="Test accuracy")
-    plt.title("Accuracy over epochs", fontsize=13)
-    plt.xlabel("Epoch", fontsize=13)
-    plt.ylabel("Accuracy", fontsize=13)
-    plt.legend()
-    plt.show()
-
-    plt.style.use("default")
-
-
-def get_accuracy(model, data_loader, device):
-    """
-    Function for computing the accuracy of the predictions
-    over the entire data_loader
-    """
-    correct_pred = 0
-    n = 0
-
-    with torch.no_grad():
-        model.eval()
-        for X, y_true in data_loader:
-            X = X.to(device)
-            y_true = y_true.to(device)
-
-            y_prob = model(X)
-            _, predicted_labels = torch.max(y_prob, 1)
-
-            n += y_true.size(0)
-            correct_pred += (predicted_labels == y_true).sum()
-
-    return correct_pred.float() / n
 
 
 def train(train_loader, model, criterion, optimizer, device):
@@ -245,7 +120,7 @@ def main():
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"{DEVICE = }")
 
-    train_loader = dataset_loaders(train=True)
+    train_loader = MnistData(batch_size=BATCH_SIZE).train_loader()
     model = AlexNet(num_classes=10).to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     criterion = nn.CrossEntropyLoss()
@@ -257,7 +132,3 @@ def main():
     model_name = "model.pth"
     torch.save(model.state_dict(), model_name)
     print(f"Model is saved with the name \"{model_name}\"")
-
-
-if __name__ == "__main__":
-    main()

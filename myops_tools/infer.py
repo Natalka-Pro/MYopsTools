@@ -1,7 +1,13 @@
 import pandas as pd
 import torch
 import torch.nn as nn
-from train import AlexNet, dataset_loaders, get_accuracy, validate
+
+from .dataloader import MnistData
+from .models import AlexNet
+from .train import validate
+from .utils import get_accuracy
+
+BATCH_SIZE = 64
 
 
 def prediction(test_loader, model, device):
@@ -21,7 +27,7 @@ def main():
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"{DEVICE = }")
 
-    test_loader = dataset_loaders(train=False)
+    test_loader = MnistData(batch_size=BATCH_SIZE).test_loader()
     model = AlexNet(num_classes=10).to(DEVICE)
     model_name = "model.pth"
     model.load_state_dict(torch.load(model_name))
@@ -48,7 +54,3 @@ def main():
         "Column names - \"Predicted labels\" and \"True labels\"",
         sep="",
     )
-
-
-if __name__ == "__main__":
-    main()

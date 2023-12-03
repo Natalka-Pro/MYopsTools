@@ -2,8 +2,8 @@
 
 ## Инструкция по запуску пакета в чистом окружении:
 ```bash
-git clone https://github.com/Natalka-Pro/MYopsTools.git
-cd MYopsTools/
+git https://github.com/Natalka-Pro/myops_tools.git
+cd myops_tools/
 ```
 
 ```bash
@@ -15,8 +15,8 @@ source venv_name/bin/activate
 poetry install
 pre-commit install
 pre-commit run -a
-python MYopsTools/train.py
-python MYopsTools/infer.py
+python commands.py train
+python commands.py infer
 ```
 
 ## Описание ML задачи
