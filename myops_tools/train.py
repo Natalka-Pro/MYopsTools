@@ -1,4 +1,3 @@
-import warnings
 from datetime import datetime
 
 import matplotlib.pyplot as plt
@@ -8,15 +7,35 @@ import torch.nn as nn
 from torchvision import datasets, transforms
 from tqdm.auto import tqdm
 
-warnings.filterwarnings("ignore")
-
-
 LEARNING_RATE = 0.001
 BATCH_SIZE = 64
 N_EPOCHS = 5
 N_CLASSES = 10
 RANDOM_SEED = 42
-torch.manual_seed(RANDOM_SEED)
+
+
+class AlexNet(nn.Module):
+    def __init__(self, num_classes: int = 10, dropout: float = 0.5) -> None:
+        super(AlexNet, self).__init__()
+
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 4, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2),
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Dropout(),
+            nn.Linear(4 * 8 * 8, 32),
+            nn.ReLU(inplace=True),
+            nn.Linear(32, num_classes),
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
+        return x
 
 
 def number_of_parameters(model):
@@ -36,7 +55,7 @@ def dataset_loaders(train):
 
     if train:
         dataset_train = datasets.MNIST(
-            root="../data", train=True, download=True, transform=transform
+            root="./data", train=True, download=True, transform=transform
         )
         train_loader = torch.utils.data.DataLoader(
             dataset=dataset_train, batch_size=BATCH_SIZE, shuffle=True
@@ -44,7 +63,7 @@ def dataset_loaders(train):
         return train_loader
     else:
         dataset_test = datasets.MNIST(
-            root="../data", train=False, transform=transform
+            root="./data", train=False, download=True, transform=transform
         )
         test_loader = torch.utils.data.DataLoader(
             dataset=dataset_test, batch_size=BATCH_SIZE, shuffle=False
@@ -170,7 +189,6 @@ def validate(test_loader, model, criterion, device):
 
 def training_loop(
     model,
-    name,
     criterion,
     optimizer,
     train_loader,
@@ -218,38 +236,12 @@ def training_loop(
                 # f'Test accuracy: {100 * test_acc:.2f}',
             )
 
-    torch.save(model.state_dict(), name + ".pth")
-    return (
-        model,
-        optimizer,
-    )  # , (train_losses, test_losses, train_accuracies, test_accuracies)
+    return model, optimizer
+    # , (train_losses, test_losses, train_accuracies, test_accuracies)
 
 
-class AlexNet(nn.Module):
-    def __init__(self, num_classes: int = 10, dropout: float = 0.5) -> None:
-        super(AlexNet, self).__init__()
-
-        self.features = nn.Sequential(
-            nn.Conv2d(3, 4, kernel_size=3, stride=2, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2),
-        )
-
-        self.classifier = nn.Sequential(
-            nn.Dropout(),
-            nn.Linear(4 * 8 * 8, 32),
-            nn.ReLU(inplace=True),
-            nn.Linear(32, num_classes),
-        )
-
-    def forward(self, x):
-        x = self.features(x)
-        x = x.view(x.size(0), -1)
-        x = self.classifier(x)
-        return x
-
-
-if __name__ == "__main__":
+def main():
+    torch.manual_seed(RANDOM_SEED)
     DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"{DEVICE = }")
 
@@ -259,5 +251,13 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
 
     model, optimizer = training_loop(
-        model, "model", criterion, optimizer, train_loader, N_EPOCHS, DEVICE
+        model, criterion, optimizer, train_loader, N_EPOCHS, DEVICE
     )
+
+    model_name = "model.pth"
+    torch.save(model.state_dict(), model_name)
+    print(f"Model is saved with the name \"{model_name}\"")
+
+
+if __name__ == "__main__":
+    main()

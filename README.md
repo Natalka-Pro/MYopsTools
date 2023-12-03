@@ -19,6 +19,13 @@ python MYopsTools/train.py
 python MYopsTools/infer.py
 ```
 
+## Описание ML задачи
+Классификация рукописных цифр - датасет [torchvision.datasets.MNIST](https://pytorch.org/vision/main/generated/torchvision.datasets.MNIST.html).
+
+60000 изображений для обучения и 10000 изображений для тестирования.
+
+Задача решается очень упрощённой свёрточной нейронной сетью AlexNet.
+
 ---
 # Первая домашняя работа
 **Текст задания:**
