@@ -15,104 +15,85 @@ N_CLASSES = 10
 RANDOM_SEED = 42
 
 
-def train(train_loader, model, criterion, optimizer, device):
-    """
-    Function for the training step of the training loop
-    """
-    model.train()
-    running_loss = 0
+class TrainClass:
+    def __init__(
+        self, model, criterion, optimizer, train_loader, n_epochs, device
+    ):
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.train_loader = train_loader
+        self.n_epochs = n_epochs
+        self.device = device
 
-    for X, y_true in train_loader:
-        optimizer.zero_grad()
+    def train(self):
+        """
+        Function for the training step of the training loop
+        """
+        self.model.train()
+        running_loss = 0
 
-        X = X.to(device)
-        y_true = y_true.to(device)
+        for X, y_true in self.train_loader:
+            self.optimizer.zero_grad()
 
-        # Forward pass
-        y_hat = model(X)
-        loss = criterion(y_hat, y_true)
-        running_loss += loss.item() * X.size(0)
+            X = X.to(self.device)
+            y_true = y_true.to(self.device)
 
-        # Backward pass
-        loss.backward()
-        optimizer.step()
+            # Forward pass
+            y_hat = self.model(X)
+            loss = self.criterion(y_hat, y_true)
+            running_loss += loss.item() * X.size(0)
 
-    epoch_loss = running_loss / len(train_loader.dataset)
-    return model, optimizer, epoch_loss
+            # Backward pass
+            loss.backward()
+            self.optimizer.step()
 
+        epoch_loss = running_loss / len(self.train_loader.dataset)
+        return epoch_loss
 
-def validate(test_loader, model, criterion, device):
-    """
-    Function for the validation step of the training loop
-    """
-    model.eval()
-    running_loss = 0
+    def training_loop(self, print_every=1):
+        """
+        Function defining the entire training loop
+        """
+        # set objects for storing metrics
+        train_losses = []
+        # test_losses = []
+        train_accuracies = []
+        # test_accuracies = []
 
-    for X, y_true in test_loader:
-        X = X.to(device)
-        y_true = y_true.to(device)
+        # Train model
+        for epoch in tqdm(range(self.n_epochs)):
+            # training
+            train_loss = self.train()
+            train_losses.append(train_loss)
 
-        # Forward pass and record loss
-        y_hat = model(X)
-        loss = criterion(y_hat, y_true)
-        running_loss += loss.item() * X.size(0)
+            # validation
+            # with torch.no_grad():
+            #     model, test_loss = validate(test_loader, model,
+            #                                 criterion, device)
+            #     test_losses.append(test_loss)
 
-    epoch_loss = running_loss / len(test_loader.dataset)
+            if epoch % print_every == (print_every - 1):
+                train_acc = get_accuracy(
+                    self.model, self.train_loader, self.device
+                )
+                # test_acc = get_accuracy(model, test_loader, device=device)
 
-    return model, epoch_loss
+                train_accuracies.append(train_acc.item())
+                # test_accuracies.append(test_acc.item())
 
+                print(
+                    f"Time: {datetime.now().time().replace(microsecond=0)}",
+                    "   ---   ",
+                    f"Epoch: {epoch}\t",
+                    f"Train loss: {train_loss:.4f}\t",
+                    # f'Test loss: {test_loss:.4f}\t',
+                    f"Train accuracy: {100 * train_acc:.2f}\t",
+                    # f'Test accuracy: {100 * test_acc:.2f}',
+                )
 
-def training_loop(
-    model,
-    criterion,
-    optimizer,
-    train_loader,
-    num_epoch,
-    device,
-    print_every=1,
-):
-    """
-    Function defining the entire training loop
-    """
-    # set objects for storing metrics
-    train_losses = []
-    # test_losses = []
-    train_accuracies = []
-    # test_accuracies = []
-
-    # Train model
-    for epoch in tqdm(range(num_epoch)):
-        # training
-        model, optimizer, train_loss = train(
-            train_loader, model, criterion, optimizer, device
-        )
-        train_losses.append(train_loss)
-
-        # validation
-        # with torch.no_grad():
-        #     model, test_loss = validate(test_loader, model,
-        #                                 criterion, device)
-        #     test_losses.append(test_loss)
-
-        if epoch % print_every == (print_every - 1):
-            train_acc = get_accuracy(model, train_loader, device=device)
-            # test_acc = get_accuracy(model, test_loader, device=device)
-
-            train_accuracies.append(train_acc.item())
-            # test_accuracies.append(test_acc.item())
-
-            print(
-                f"Time: {datetime.now().time().replace(microsecond=0)}",
-                "   ---   ",
-                f"Epoch: {epoch}\t",
-                f"Train loss: {train_loss:.4f}\t",
-                # f'Test loss: {test_loss:.4f}\t',
-                f"Train accuracy: {100 * train_acc:.2f}\t",
-                # f'Test accuracy: {100 * test_acc:.2f}',
-            )
-
-    return model, optimizer
-    # , (train_losses, test_losses, train_accuracies, test_accuracies)
+        # return self.model, self.optimizer
+        # , (train_losses, test_losses, train_accuracies, test_accuracies)
 
 
 def main():
@@ -125,9 +106,11 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     criterion = nn.CrossEntropyLoss()
 
-    model, optimizer = training_loop(
+    Training = TrainClass(
         model, criterion, optimizer, train_loader, N_EPOCHS, DEVICE
     )
+    Training.training_loop()
+    model = Training.model
 
     model_name = "model.pth"
     torch.save(model.state_dict(), model_name)
