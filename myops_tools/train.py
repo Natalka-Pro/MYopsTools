@@ -8,12 +8,6 @@ from .dataloader import MnistData
 from .models import AlexNet
 from .utils import get_accuracy
 
-LEARNING_RATE = 0.001
-BATCH_SIZE = 64
-N_EPOCHS = 5
-N_CLASSES = 10
-RANDOM_SEED = 42
-
 
 class TrainClass:
     def __init__(
@@ -96,22 +90,28 @@ class TrainClass:
         # , (train_losses, test_losses, train_accuracies, test_accuracies)
 
 
-def main():
+def main(config):
+    LEARNING_RATE = config["learning_rate"]
+    BATCH_SIZE = config["batch_size"]
+    N_EPOCHS = config["n_epochs"]
+    N_CLASSES = config["n_classes"]
+    RANDOM_SEED = config["random_seed"]
+    MODEL_SAVE = config["model_save"]
+
     torch.manual_seed(RANDOM_SEED)
-    DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"{DEVICE = }")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(f"Device type: {device}")
 
     train_loader = MnistData(batch_size=BATCH_SIZE).train_loader()
-    model = AlexNet(num_classes=10).to(DEVICE)
+    model = AlexNet(N_CLASSES).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     criterion = nn.CrossEntropyLoss()
 
     Training = TrainClass(
-        model, criterion, optimizer, train_loader, N_EPOCHS, DEVICE
+        model, criterion, optimizer, train_loader, N_EPOCHS, device
     )
     Training.training_loop()
     model = Training.model
 
-    model_name = "model.pth"
-    torch.save(model.state_dict(), model_name)
-    print(f"Model is saved with the name \"{model_name}\"")
+    torch.save(model.state_dict(), MODEL_SAVE)
+    print(f"Model is saved with the name \"{MODEL_SAVE}\"")
