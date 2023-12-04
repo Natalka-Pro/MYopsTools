@@ -24,6 +24,7 @@ priority = "explicit"
 pre-commit = "^3.4.0"
 fire = "^0.5.0"
 dvc = "^3.31.0"
+dvc-gdrive = "^2.20.0"
 
 [build-system]
 requires = ["poetry-core"]
