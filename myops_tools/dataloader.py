@@ -18,7 +18,7 @@ class MnistData:
 
     def train_loader(self):
         dataset_train = datasets.MNIST(
-            root="./data", train=True, download=True, transform=self.transform
+            root="./data", train=True, download=False, transform=self.transform
         )
         train_loader = torch.utils.data.DataLoader(
             dataset=dataset_train, batch_size=self.batch_size, shuffle=True
@@ -27,7 +27,10 @@ class MnistData:
 
     def test_loader(self):
         dataset_test = datasets.MNIST(
-            root="./data", train=False, download=True, transform=self.transform
+            root="./data",
+            train=False,
+            download=False,
+            transform=self.transform,
         )
         test_loader = torch.utils.data.DataLoader(
             dataset=dataset_test, batch_size=self.batch_size, shuffle=False

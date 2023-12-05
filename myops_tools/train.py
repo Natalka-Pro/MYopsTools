@@ -49,7 +49,6 @@ class TrainClass:
         """
         Function defining the entire training loop
         """
-        # set objects for storing metrics
         train_losses = []
         # test_losses = []
         train_accuracies = []
