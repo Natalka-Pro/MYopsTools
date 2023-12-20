@@ -53,17 +53,13 @@ class TestClass:
 
 
 def main(config):
-    BATCH_SIZE = config["batch_size"]
-    MODEL_LOAD = config["model_load"]
-    PREDS_FILE = config["preds_file"]
-
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Device type: {device}")
 
-    test_loader = MnistData(batch_size=BATCH_SIZE).test_loader()
+    test_loader = MnistData(batch_size=config.batch_size).test_loader()
     model = AlexNet(num_classes=10).to(device)
-    model.load_state_dict(torch.load(MODEL_LOAD))
-    print(f"Model \"{MODEL_LOAD}\" is loaded")
+    model.load_state_dict(torch.load(config.model_load))
+    print(f"Model \"{config.model_load}\" is loaded")
     criterion = nn.CrossEntropyLoss()
 
     Testing = TestClass(model, criterion, test_loader, device)
@@ -72,16 +68,14 @@ def main(config):
     test_acc = Testing.accuracy
     test_loss = Testing.loss
 
-    # x = (pred_true[:, 0] == pred_true[:, 1]
-    #               ).sum().float() / pred_true.size(0)
-    print(f"Validation: accuracy = {test_acc}, loss = {test_loss}")
+    print(f"Validation: accuracy = {test_acc:.4f}, loss = {test_loss:.4f}")
 
     df = pd.DataFrame(pred_true, columns=["Predicted labels", "True labels"])
 
-    df.to_csv(PREDS_FILE)
+    df.to_csv(config.preds_file)
     print(
         f"A matrix of size {tuple(pred_true.size())} ",
-        f"was written to the file \"{PREDS_FILE}\"\n",
+        f"was written to the file \"{config.preds_file}\"\n",
         "Column names - \"Predicted labels\" and \"True labels\"",
         sep="",
     )

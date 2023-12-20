@@ -4,10 +4,8 @@ from dvc.api import DVCFileSystem
 
 
 def main(config):
-    DATASET = config["dataset"]
-
-    if os.path.isdir(f"./data/{DATASET}"):
-        print(f"The folder \"{DATASET}\" exists")
+    if os.path.isdir(f"./data/{config.dataset}"):
+        print(f"The folder \"{config.dataset}\" exists")
     else:
         print("Dataset download begins")
         url = "https://github.com/Natalka-Pro/myops_tools.git"

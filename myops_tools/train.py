@@ -81,8 +81,8 @@ class TrainClass:
                     f"Epoch: {epoch}\t",
                     f"Train loss: {train_loss:.4f}\t",
                     # f'Test loss: {test_loss:.4f}\t',
-                    f"Train accuracy: {100 * train_acc:.2f}\t",
-                    # f'Test accuracy: {100 * test_acc:.2f}',
+                    f"Train accuracy: {100 * train_acc:.4f}\t",
+                    # f'Test accuracy: {100 * test_acc:.4f}',
                 )
 
         # return self.model, self.optimizer
@@ -90,27 +90,20 @@ class TrainClass:
 
 
 def main(config):
-    LEARNING_RATE = config["learning_rate"]
-    BATCH_SIZE = config["batch_size"]
-    N_EPOCHS = config["n_epochs"]
-    N_CLASSES = config["n_classes"]
-    RANDOM_SEED = config["random_seed"]
-    MODEL_SAVE = config["model_save"]
-
-    torch.manual_seed(RANDOM_SEED)
+    torch.manual_seed(config.random_seed)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Device type: {device}")
 
-    train_loader = MnistData(batch_size=BATCH_SIZE).train_loader()
-    model = AlexNet(N_CLASSES).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    train_loader = MnistData(batch_size=config.batch_size).train_loader()
+    model = AlexNet(config.n_classes).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
     criterion = nn.CrossEntropyLoss()
 
     Training = TrainClass(
-        model, criterion, optimizer, train_loader, N_EPOCHS, device
+        model, criterion, optimizer, train_loader, config.n_epochs, device
     )
     Training.training_loop()
     model = Training.model
 
-    torch.save(model.state_dict(), MODEL_SAVE)
-    print(f"Model is saved with the name \"{MODEL_SAVE}\"")
+    torch.save(model.state_dict(), config.model_save)
+    print(f"Model is saved with the name \"{config.model_save}\"")

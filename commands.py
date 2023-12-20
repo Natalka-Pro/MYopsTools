@@ -9,15 +9,15 @@ from myops_tools.train import main as train
 def training():
     initialize(config_path="configs", version_base="1.3")
     config = compose(config_name="config.yaml")
-    download(config["download"])
-    train(config["train"])
+    download(config.download)
+    train(config.train)
 
 
 def infering():
     initialize(config_path="configs", version_base="1.3")
     config = compose(config_name="config.yaml")
-    download(config["download"])
-    infer(config["infer"])
+    download(config.download)
+    infer(config.infer)
 
 
 if __name__ == "__main__":
