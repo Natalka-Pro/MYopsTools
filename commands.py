@@ -10,14 +10,14 @@ def training():
     initialize(config_path="configs", version_base="1.3")
     config = compose(config_name="config.yaml")
     download(config.download)
-    train(config.train)
+    train(config)
 
 
 def infering():
     initialize(config_path="configs", version_base="1.3")
     config = compose(config_name="config.yaml")
     download(config.download)
-    infer(config.infer)
+    infer(config)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,12 @@
+import pytorch_lightning as pl
 import torch
 from torchvision import datasets, transforms
 
 
-class MnistData:
+class MnistData(pl.LightningDataModule):
     def __init__(self, batch_size: int):
+        super().__init__()
+        # self.save_hyperparameters()
         self.batch_size = batch_size
 
         resize = transforms.Resize((32, 32))
@@ -16,23 +19,29 @@ class MnistData:
             [resize, to_rgb, transforms.ToTensor(), normalize]
         )
 
-    def train_loader(self):
-        dataset_train = datasets.MNIST(
+        self.train_dataset = datasets.MNIST(
             root="./data", train=True, download=False, transform=self.transform
         )
-        train_loader = torch.utils.data.DataLoader(
-            dataset=dataset_train, batch_size=self.batch_size, shuffle=True
-        )
-        return train_loader
 
-    def test_loader(self):
-        dataset_test = datasets.MNIST(
+        self.test_dataset = datasets.MNIST(
             root="./data",
             train=False,
             download=False,
             transform=self.transform,
         )
+
+    def train_dataloader(self):
+        train_loader = torch.utils.data.DataLoader(
+            dataset=self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+        )
+        return train_loader
+
+    def test_dataloader(self):
         test_loader = torch.utils.data.DataLoader(
-            dataset=dataset_test, batch_size=self.batch_size, shuffle=False
+            dataset=self.test_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
         )
         return test_loader

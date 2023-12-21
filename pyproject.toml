@@ -13,6 +13,7 @@ torch = {version = "^2.1.0+cpu", source = "pytorch"}
 torchvision = {version = "^0.16.0+cpu", source = "pytorch"}
 tqdm = "^4.66.1"
 pandas = "^2.1.1"
+pytorch-lightning = "^2.1.2"
 
 [[tool.poetry.source]]
 name = "pytorch"

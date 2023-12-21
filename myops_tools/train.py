@@ -1,10 +1,11 @@
 from datetime import datetime
 
+# import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 from tqdm.auto import tqdm
 
-from .dataloader import MnistData
+from .data import MnistData
 from .models import AlexNet
 from .utils import get_accuracy
 
@@ -13,6 +14,9 @@ class TrainClass:
     def __init__(
         self, model, criterion, optimizer, train_loader, n_epochs, device
     ):
+        # super().__init__()
+        # self.save_hyperparameters()
+
         self.model = model
         self.criterion = criterion
         self.optimizer = optimizer
@@ -90,20 +94,29 @@ class TrainClass:
 
 
 def main(config):
-    torch.manual_seed(config.random_seed)
+    torch.manual_seed(config.train.random_seed)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Device type: {device}")
 
-    train_loader = MnistData(batch_size=config.batch_size).train_loader()
-    model = AlexNet(config.n_classes).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
+    train_loader = MnistData(
+        batch_size=config.train.batch_size
+    ).train_dataloader()
+    model = AlexNet(config.model.n_classes, config.model.dropout).to(device)
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=config.train.learning_rate
+    )
     criterion = nn.CrossEntropyLoss()
 
     Training = TrainClass(
-        model, criterion, optimizer, train_loader, config.n_epochs, device
+        model,
+        criterion,
+        optimizer,
+        train_loader,
+        config.train.n_epochs,
+        device,
     )
     Training.training_loop()
     model = Training.model
 
-    torch.save(model.state_dict(), config.model_save)
-    print(f"Model is saved with the name \"{config.model_save}\"")
+    torch.save(model.state_dict(), config.train.model_save)
+    print(f"Model is saved with the name \"{config.train.model_save}\"")

@@ -2,7 +2,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-from .dataloader import MnistData
+from .data import MnistData
 from .models import AlexNet
 
 
@@ -47,8 +47,8 @@ class TestClass:
                 loss = self.criterion(y_prob, y_true)
                 running_loss += loss.item() * X.size(0)
 
-        self.pred_true = pred_true
-        self.accuracy = (correct_pred.float() / n).item()
+        self.pred_true = pred_true.int()
+        self.accuracy = (correct_pred.int() / n).item()
         self.loss = running_loss / len(self.test_loader.dataset)
 
 
@@ -56,10 +56,12 @@ def main(config):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Device type: {device}")
 
-    test_loader = MnistData(batch_size=config.batch_size).test_loader()
-    model = AlexNet(num_classes=10).to(device)
-    model.load_state_dict(torch.load(config.model_load))
-    print(f"Model \"{config.model_load}\" is loaded")
+    test_loader = MnistData(
+        batch_size=config.infer.batch_size
+    ).test_dataloader()
+    model = AlexNet(config.model.n_classes, config.model.dropout).to(device)
+    model.load_state_dict(torch.load(config.infer.model_load))
+    print(f"Model \"{config.infer.model_load}\" is loaded")
     criterion = nn.CrossEntropyLoss()
 
     Testing = TestClass(model, criterion, test_loader, device)
@@ -72,10 +74,10 @@ def main(config):
 
     df = pd.DataFrame(pred_true, columns=["Predicted labels", "True labels"])
 
-    df.to_csv(config.preds_file)
+    df.to_csv(config.infer.preds_file)
     print(
         f"A matrix of size {tuple(pred_true.size())} ",
-        f"was written to the file \"{config.preds_file}\"\n",
+        f"was written to the file \"{config.infer.preds_file}\"\n",
         "Column names - \"Predicted labels\" and \"True labels\"",
         sep="",
     )
