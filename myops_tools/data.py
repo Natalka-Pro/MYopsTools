@@ -3,7 +3,7 @@ import torch
 from torchvision import datasets, transforms
 
 
-class MnistData(pl.LightningDataModule):
+class MnistDataModule(pl.LightningDataModule):
     def __init__(self, batch_size: int):
         super().__init__()
         # self.save_hyperparameters()
@@ -35,6 +35,14 @@ class MnistData(pl.LightningDataModule):
             dataset=self.train_dataset,
             batch_size=self.batch_size,
             shuffle=True,
+        )
+        return train_loader
+
+    def val_dataloader(self):
+        train_loader = torch.utils.data.DataLoader(
+            dataset=self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
         )
         return train_loader
 

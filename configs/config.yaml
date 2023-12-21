@@ -4,6 +4,7 @@ download:
 model:
     n_classes: 10
     dropout: 0.5
+    accelerator: "cpu"
 
 train:
     learning_rate: 1e-3
@@ -11,6 +12,14 @@ train:
     n_epochs: 5
     random_seed: 42
     model_save: "model.pth"
+    devices: "auto"
+
+artifacts:
+    experiment_name: "mlops"
+    tracking_uri: "file:./logs"
+
+callbacks:
+    max_depth: 3
 
 infer:
     batch_size: 64

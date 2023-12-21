@@ -1,122 +1,101 @@
-from datetime import datetime
-
-# import pytorch_lightning as pl
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-from tqdm.auto import tqdm
 
-from .data import MnistData
+from .data import MnistDataModule
 from .models import AlexNet
-from .utils import get_accuracy
 
 
-class TrainClass:
-    def __init__(
-        self, model, criterion, optimizer, train_loader, n_epochs, device
-    ):
-        # super().__init__()
-        # self.save_hyperparameters()
+class TrainModule(pl.LightningModule):
+    def __init__(self, config, git_commit_id):
+        super().__init__()
+        self.save_hyperparameters()
 
-        self.model = model
-        self.criterion = criterion
-        self.optimizer = optimizer
-        self.train_loader = train_loader
-        self.n_epochs = n_epochs
-        self.device = device
+        self.config = config
+        self.model = AlexNet(config.model.n_classes, config.model.dropout)
+        self.criterion = nn.CrossEntropyLoss()
 
-    def train(self):
-        """
-        Function for the training step of the training loop
-        """
-        self.model.train()
-        running_loss = 0
+        # self.train_loader = train_loader
+        # self.n_epochs = n_epochs
+        # self.device = device
 
-        for X, y_true in self.train_loader:
-            self.optimizer.zero_grad()
+    def training_step(self, batch, batch_idx):
+        X, y_true = batch
 
-            X = X.to(self.device)
-            y_true = y_true.to(self.device)
+        y_prob = self.model(X)
+        loss = self.criterion(y_prob, y_true)
 
-            # Forward pass
-            y_hat = self.model(X)
-            loss = self.criterion(y_hat, y_true)
-            running_loss += loss.item() * X.size(0)
+        _, predicted_labels = torch.max(y_prob, 1)
+        accuracy = (predicted_labels == y_true).sum() / predicted_labels.size(
+            0
+        )
 
-            # Backward pass
-            loss.backward()
-            self.optimizer.step()
+        logs = {'train_loss': loss.detach(), 'train_accuracy': accuracy}
 
-        epoch_loss = running_loss / len(self.train_loader.dataset)
-        return epoch_loss
+        self.log_dict(
+            logs, on_step=True, on_epoch=False, prog_bar=True, logger=True
+        )
+        return loss
 
-    def training_loop(self, print_every=1):
-        """
-        Function defining the entire training loop
-        """
-        train_losses = []
-        # test_losses = []
-        train_accuracies = []
-        # test_accuracies = []
+    def validation_step(self, batch, batch_idx):
+        X, y_true = batch
 
-        # Train model
-        for epoch in tqdm(range(self.n_epochs)):
-            # training
-            train_loss = self.train()
-            train_losses.append(train_loss)
+        y_prob = self.model(X)
+        loss = self.criterion(y_prob, y_true)
 
-            # validation
-            # with torch.no_grad():
-            #     model, test_loss = validate(test_loader, model,
-            #                                 criterion, device)
-            #     test_losses.append(test_loss)
+        _, predicted_labels = torch.max(y_prob, 1)
+        accuracy = (predicted_labels == y_true).sum() / predicted_labels.size(
+            0
+        )
 
-            if epoch % print_every == (print_every - 1):
-                train_acc = get_accuracy(
-                    self.model, self.train_loader, self.device
-                )
-                # test_acc = get_accuracy(model, test_loader, device=device)
+        logs = {'test_loss': loss.detach(), 'test_accuracy': accuracy}
 
-                train_accuracies.append(train_acc.item())
-                # test_accuracies.append(test_acc.item())
+        self.log_dict(
+            logs, on_step=True, on_epoch=False, prog_bar=True, logger=True
+        )
+        return loss
 
-                print(
-                    f"Time: {datetime.now().time().replace(microsecond=0)}",
-                    "   ---   ",
-                    f"Epoch: {epoch}\t",
-                    f"Train loss: {train_loss:.4f}\t",
-                    # f'Test loss: {test_loss:.4f}\t',
-                    f"Train accuracy: {100 * train_acc:.4f}\t",
-                    # f'Test accuracy: {100 * test_acc:.4f}',
-                )
-
-        # return self.model, self.optimizer
-        # , (train_losses, test_losses, train_accuracies, test_accuracies)
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(
+            self.model.parameters(), lr=self.config.train.learning_rate
+        )
+        return optimizer
 
 
 def main(config):
-    torch.manual_seed(config.train.random_seed)
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"Device type: {device}")
+    pl.seed_everything(config.train.random_seed)
+    # torch.set_float32_matmul_precision("medium")
 
-    train_loader = MnistData(
-        batch_size=config.train.batch_size
-    ).train_dataloader()
-    model = AlexNet(config.model.n_classes, config.model.dropout).to(device)
-    optimizer = torch.optim.Adam(
-        model.parameters(), lr=config.train.learning_rate
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # print(f"Device type: {device}")
+
+    dm = MnistDataModule(batch_size=config.train.batch_size)
+    model = TrainModule(config, 1)
+
+    logger = pl.loggers.MLFlowLogger(
+        experiment_name=config.artifacts.experiment_name,
+        tracking_uri=config.artifacts.tracking_uri,
     )
-    criterion = nn.CrossEntropyLoss()
 
-    Training = TrainClass(
-        model,
-        criterion,
-        optimizer,
-        train_loader,
-        config.train.n_epochs,
-        device,
+    callbacks = [
+        pl.callbacks.LearningRateMonitor(logging_interval="step"),
+        pl.callbacks.DeviceStatsMonitor(),
+        pl.callbacks.RichModelSummary(max_depth=config.callbacks.max_depth),
+    ]
+
+    trainer = pl.Trainer(
+        accelerator=config.model.accelerator,
+        devices=config.train.devices,
+        max_epochs=config.train.n_epochs,
+        logger=logger,
+        callbacks=callbacks,
     )
-    Training.training_loop()
-    model = Training.model
 
-    torch.save(model.state_dict(), config.train.model_save)
+    trainer.fit(model, datamodule=dm)
+
+    # trainer.fit(model,
+    #             train_dataloaders=dm.train_dataloader(),
+    #             val_dataloaders=dm.val_dataloader())
+
+    torch.save(model.model.state_dict(), config.train.model_save)
     print(f"Model is saved with the name \"{config.train.model_save}\"")

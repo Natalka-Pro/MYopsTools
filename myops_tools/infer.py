@@ -2,7 +2,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-from .data import MnistData
+from .data import MnistDataModule
 from .models import AlexNet
 
 
@@ -53,10 +53,11 @@ class TestClass:
 
 
 def main(config):
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device(config.model.accelerator)
     print(f"Device type: {device}")
 
-    test_loader = MnistData(
+    test_loader = MnistDataModule(
         batch_size=config.infer.batch_size
     ).test_dataloader()
     model = AlexNet(config.model.n_classes, config.model.dropout).to(device)
