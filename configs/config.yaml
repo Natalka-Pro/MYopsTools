@@ -12,6 +12,7 @@ train:
     n_epochs: 5
     random_seed: 42
     model_save: "model.pth"
+    model_save_onnx: "model.onnx"
     devices: "auto"
 
 artifacts:

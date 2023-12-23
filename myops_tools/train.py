@@ -61,6 +61,12 @@ class TrainModule(pl.LightningModule):
         )
         return optimizer
 
+    def save_model(self):
+        torch.save(self.model.state_dict(), self.config.train.model_save)
+        print(
+            f"Model is saved with the name \"{self.config.train.model_save}\""
+        )
+
 
 def main(config):
     pl.seed_everything(config.train.random_seed)
@@ -69,8 +75,8 @@ def main(config):
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # print(f"Device type: {device}")
 
-    dm = MnistDataModule(batch_size=config.train.batch_size)
-    model = TrainModule(config, 1)
+    datamodule = MnistDataModule(batch_size=config.train.batch_size)
+    trainmodule = TrainModule(config, 1)
 
     logger = pl.loggers.MLFlowLogger(
         experiment_name=config.artifacts.experiment_name,
@@ -91,11 +97,35 @@ def main(config):
         callbacks=callbacks,
     )
 
-    trainer.fit(model, datamodule=dm)
-
+    trainer.fit(trainmodule, datamodule=datamodule)
     # trainer.fit(model,
     #             train_dataloaders=dm.train_dataloader(),
     #             val_dataloaders=dm.val_dataloader())
+    trainmodule.save_model()
 
-    torch.save(model.model.state_dict(), config.train.model_save)
-    print(f"Model is saved with the name \"{config.train.model_save}\"")
+    # ONNX
+    model = trainmodule.model
+    # set the model to inference mode
+    model.eval()
+
+    # Let's create a dummy input tensor
+    dummy_input = torch.randn(64, 3, 32, 32, requires_grad=True)
+
+    # Export the model
+    torch.onnx.export(
+        model,  # model being run
+        dummy_input,  # model input (or a tuple for multiple inputs)
+        config.train.model_save_onnx,  # where to save the model
+        export_params=True,
+        # store the trained parameter weights inside the model file
+        # opset_version=10,
+        # the ONNX version to export the model to
+        # do_constant_folding=True,
+        # whether to execute constant folding for optimization
+        input_names=['images'],  # the model's input names
+        output_names=['proba_distr'],  # the model's output names
+        dynamic_axes={
+            'images': {0: 'batch_size'},  # variable length axes
+            'proba_distr': {0: 'batch_size'},
+        },
+    )

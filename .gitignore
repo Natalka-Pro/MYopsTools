@@ -1,6 +1,7 @@
 venv/
 __pycache__/
 model.pth
+model.onnx
 labels.csv
 file.txt
 logs

@@ -1,3 +1,5 @@
+import mlflow
+import onnx
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -52,7 +54,7 @@ class TestClass:
         self.loss = running_loss / len(self.test_loader.dataset)
 
 
-def main(config):
+def val(config):
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     device = torch.device(config.model.accelerator)
     print(f"Device type: {device}")
@@ -82,3 +84,33 @@ def main(config):
         "Column names - \"Predicted labels\" and \"True labels\"",
         sep="",
     )
+
+
+def main(config):
+    # ONNX
+    device = torch.device(config.model.accelerator)
+    model = (
+        AlexNet(config.model.n_classes, config.model.dropout).to(device).eval()
+    )
+
+    onnx_model = onnx.load_model(config.train.model_save_onnx)
+    X = torch.randn(64, 3, 32, 32)
+
+    # remote_server_uri = config.artifacts.tracking_uri
+    remote_server_uri = "http://127.0.0.1:5000"
+    mlflow.set_tracking_uri(remote_server_uri)
+    mlflow.set_experiment(experiment_name=config.artifacts.experiment_name)
+    # log the model into a mlflow run
+    with mlflow.start_run():
+        signature = mlflow.models.infer_signature(
+            X.numpy(), model(X).detach().numpy()
+        )
+        model_info = mlflow.onnx.log_model(
+            onnx_model, "model", signature=signature
+        )
+
+    # load the logged model and make a prediction
+    onnx_pyfunc = mlflow.pyfunc.load_model(model_info.model_uri)
+
+    predictions = onnx_pyfunc.predict(X.numpy())
+    print(predictions)

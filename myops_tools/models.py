@@ -6,7 +6,13 @@ class AlexNet(nn.Module):
         super(AlexNet, self).__init__()
 
         self.features = nn.Sequential(
-            nn.Conv2d(3, 4, kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(
+                in_channels=3,
+                out_channels=4,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+            ),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2),
         )
