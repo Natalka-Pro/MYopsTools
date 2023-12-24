@@ -1,8 +1,8 @@
 import fire
 from hydra import compose, initialize
 
+from myops_tools import infer
 from myops_tools.download import main as download
-from myops_tools.infer import main as infer
 from myops_tools.train import main as train
 
 
@@ -17,7 +17,14 @@ def infering():
     initialize(config_path="configs", version_base="1.3")
     config = compose(config_name="config.yaml")
     download(config.download)
-    infer(config)
+    infer.testing(config)
+
+
+def running_server():
+    initialize(config_path="configs", version_base="1.3")
+    config = compose(config_name="config.yaml")
+    download(config.download)
+    infer.run_server(config)
 
 
 if __name__ == "__main__":
@@ -25,5 +32,6 @@ if __name__ == "__main__":
         {
             'train': training,
             'infer': infering,
+            'run_server': running_server,
         }
     )

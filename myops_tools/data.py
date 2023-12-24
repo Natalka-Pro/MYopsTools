@@ -6,7 +6,7 @@ from torchvision import datasets, transforms
 class MnistDataModule(pl.LightningDataModule):
     def __init__(self, batch_size: int):
         super().__init__()
-        # self.save_hyperparameters()
+        self.save_hyperparameters()
         self.batch_size = batch_size
 
         resize = transforms.Resize((32, 32))

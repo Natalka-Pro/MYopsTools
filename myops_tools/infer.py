@@ -1,4 +1,5 @@
 import mlflow
+import numpy as np
 import onnx
 import pandas as pd
 import torch
@@ -38,7 +39,7 @@ class TestClass:
                 y_true = y_true.to(self.device)
 
                 y_prob = self.model(X)
-                _, y_pred = torch.max(y_prob, 1)
+                _, y_pred = torch.max(y_prob, axis=1)
                 y_pred_true = torch.stack([y_pred, y_true], dim=1)
                 pred_true = torch.cat([pred_true, y_pred_true])
 
@@ -54,7 +55,7 @@ class TestClass:
         self.loss = running_loss / len(self.test_loader.dataset)
 
 
-def val(config):
+def testing(config):
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     device = torch.device(config.model.accelerator)
     print(f"Device type: {device}")
@@ -73,10 +74,9 @@ def val(config):
     test_acc = Testing.accuracy
     test_loss = Testing.loss
 
-    print(f"Validation: accuracy = {test_acc:.4f}, loss = {test_loss:.4f}")
+    print(f"Validation accuracy = {test_acc:.4f}, loss = {test_loss:.4f}")
 
     df = pd.DataFrame(pred_true, columns=["Predicted labels", "True labels"])
-
     df.to_csv(config.infer.preds_file)
     print(
         f"A matrix of size {tuple(pred_true.size())} ",
@@ -86,21 +86,50 @@ def val(config):
     )
 
 
-def main(config):
-    # ONNX
-    device = torch.device(config.model.accelerator)
-    model = (
-        AlexNet(config.model.n_classes, config.model.dropout).to(device).eval()
+def testing_onnx(onnx_pyfunc, config):
+    # https://mlflow.org/docs/2.9.2/getting-started/intro-quickstart/index.html
+    test_loader = MnistDataModule(
+        batch_size=config.infer.batch_size
+    ).test_dataloader()
+
+    pred_true = np.empty((0, 2), int)  # size N x 2
+
+    for X, y_true in test_loader:
+        X = X.detach().numpy()
+
+        y_prob = onnx_pyfunc.predict(X)['proba_distr']
+        y_pred = np.argmax(y_prob, axis=1)
+        y_pred_true = np.stack([y_pred, y_true], axis=1)
+        pred_true = np.append(pred_true, y_pred_true, axis=0)
+
+    pred_true = pred_true.astype(int)
+    accuracy = (pred_true[:, 0] == pred_true[:, 1]).sum() / len(pred_true)
+    print(f"Validation accuracy = {accuracy:.4f}")
+
+    df = pd.DataFrame(pred_true, columns=["Predicted labels", "True labels"])
+    df.to_csv(config.infer.preds_file)
+    print(
+        f"A matrix of size {tuple(pred_true.shape)} ",
+        f"was written to the file \"{config.infer.preds_file}\"\n",
+        "Column names - \"Predicted labels\" and \"True labels\"",
+        sep="",
     )
 
+
+def run_server(config):
+    # https://mlflow.org/docs/latest/models.html#onnx-pyfunc-usage-example
     onnx_model = onnx.load_model(config.train.model_save_onnx)
     X = torch.randn(64, 3, 32, 32)
 
-    # remote_server_uri = config.artifacts.tracking_uri
-    remote_server_uri = "http://127.0.0.1:5000"
-    mlflow.set_tracking_uri(remote_server_uri)
+    mlflow.set_tracking_uri(
+        f"http://{config.artifacts.host}:{config.artifacts.port}"
+    )
     mlflow.set_experiment(experiment_name=config.artifacts.experiment_name)
     # log the model into a mlflow run
+    model = AlexNet(config.model.n_classes, config.model.dropout).to(
+        torch.device(config.model.accelerator)
+    )
+
     with mlflow.start_run():
         signature = mlflow.models.infer_signature(
             X.numpy(), model(X).detach().numpy()
@@ -112,5 +141,6 @@ def main(config):
     # load the logged model and make a prediction
     onnx_pyfunc = mlflow.pyfunc.load_model(model_info.model_uri)
 
-    predictions = onnx_pyfunc.predict(X.numpy())
-    print(predictions)
+    testing_onnx(onnx_pyfunc, config)
+    # predictions = onnx_pyfunc.predict(X.numpy())
+    # print(predictions)

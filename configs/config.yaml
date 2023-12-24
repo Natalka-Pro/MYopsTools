@@ -16,8 +16,10 @@ train:
     devices: "auto"
 
 artifacts:
-    experiment_name: "mlops"
-    tracking_uri: "file:./logs"
+    experiment_name: "experiment_2"
+    # tracking_uri: "file:./logs"
+    host: "127.0.0.1"
+    port: 8080
 
 callbacks:
     max_depth: 3

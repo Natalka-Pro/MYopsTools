@@ -15,8 +15,18 @@ source venv_name/bin/activate
 poetry install
 pre-commit install
 pre-commit run -a
+```
+
+Запуск сервера mlflow:
+```bash
+mlflow server --host 127.0.0.1 --port 8080
+```
+
+Команды модели:
+```bash
 python commands.py train
 python commands.py infer
+python commands.py run_server
 ```
 
 ## Описание ML задачи

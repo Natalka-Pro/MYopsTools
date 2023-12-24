@@ -18,7 +18,7 @@ def get_accuracy(model, data_loader, device):
             y_true = y_true.to(device)
 
             y_prob = model(X)
-            _, predicted_labels = torch.max(y_prob, 1)
+            _, predicted_labels = torch.max(y_prob, axis=1)
 
             n += y_true.size(0)
             correct_pred += (predicted_labels == y_true).sum()

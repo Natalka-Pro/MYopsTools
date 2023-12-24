@@ -15,17 +15,13 @@ class TrainModule(pl.LightningModule):
         self.model = AlexNet(config.model.n_classes, config.model.dropout)
         self.criterion = nn.CrossEntropyLoss()
 
-        # self.train_loader = train_loader
-        # self.n_epochs = n_epochs
-        # self.device = device
-
     def training_step(self, batch, batch_idx):
         X, y_true = batch
 
         y_prob = self.model(X)
         loss = self.criterion(y_prob, y_true)
 
-        _, predicted_labels = torch.max(y_prob, 1)
+        _, predicted_labels = torch.max(y_prob, axis=1)
         accuracy = (predicted_labels == y_true).sum() / predicted_labels.size(
             0
         )
@@ -43,7 +39,7 @@ class TrainModule(pl.LightningModule):
         y_prob = self.model(X)
         loss = self.criterion(y_prob, y_true)
 
-        _, predicted_labels = torch.max(y_prob, 1)
+        _, predicted_labels = torch.max(y_prob, axis=1)
         accuracy = (predicted_labels == y_true).sum() / predicted_labels.size(
             0
         )
@@ -68,19 +64,16 @@ class TrainModule(pl.LightningModule):
         )
 
 
-def main(config):
+def lightning_log(config):
     pl.seed_everything(config.train.random_seed)
-    # torch.set_float32_matmul_precision("medium")
-
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # print(f"Device type: {device}")
-
+    torch.set_float32_matmul_precision("medium")
     datamodule = MnistDataModule(batch_size=config.train.batch_size)
     trainmodule = TrainModule(config, 1)
 
     logger = pl.loggers.MLFlowLogger(
         experiment_name=config.artifacts.experiment_name,
-        tracking_uri=config.artifacts.tracking_uri,
+        # tracking_uri=config.artifacts.tracking_uri,
+        tracking_uri=f"http://{config.artifacts.host}:{config.artifacts.port}",
     )
 
     callbacks = [
@@ -102,12 +95,11 @@ def main(config):
     #             train_dataloaders=dm.train_dataloader(),
     #             val_dataloaders=dm.val_dataloader())
     trainmodule.save_model()
+    return trainmodule.model
 
-    # ONNX
-    model = trainmodule.model
-    # set the model to inference mode
-    model.eval()
 
+def onnx_save(model, config):
+    # (https://learn.microsoft.com/ru-ru/windows/ai/windows-ml/tutorials/pytorch-convert-model)
     # Let's create a dummy input tensor
     dummy_input = torch.randn(64, 3, 32, 32, requires_grad=True)
 
@@ -129,3 +121,8 @@ def main(config):
             'proba_distr': {0: 'batch_size'},
         },
     )
+
+
+def main(config):
+    model = lightning_log(config).eval()
+    onnx_save(model, config)
