@@ -1,3 +1,4 @@
+import git
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -68,7 +69,14 @@ def lightning_log(config):
     pl.seed_everything(config.train.random_seed)
     torch.set_float32_matmul_precision("medium")
     datamodule = MnistDataModule(batch_size=config.train.batch_size)
-    trainmodule = TrainModule(config, 1)
+
+    try:
+        repo = git.Repo(search_parent_directories=True)
+        git_commit_id = repo.head.object.hexsha
+    except git.InvalidGitRepositoryError:
+        git_commit_id = "git repository not found"
+
+    trainmodule = TrainModule(config, git_commit_id)
 
     logger = pl.loggers.MLFlowLogger(
         experiment_name=config.artifacts.experiment_name,
