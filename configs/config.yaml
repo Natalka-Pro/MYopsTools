@@ -12,7 +12,7 @@ train:
     n_epochs: 5
     random_seed: 42
     model_save: "model.pth"
-    model_save_onnx: "model.onnx"
+    model_save_onnx: "triton/model_repository/onnx-AlexNet/1/model.onnx"
     devices: "auto"
 
 artifacts:
