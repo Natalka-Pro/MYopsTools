@@ -109,7 +109,7 @@ def lightning_log(config):
 def onnx_save(model, config):
     # (https://learn.microsoft.com/ru-ru/windows/ai/windows-ml/tutorials/pytorch-convert-model)
     # Let's create a dummy input tensor
-    dummy_input = torch.randn(64, 3, 32, 32, requires_grad=True)
+    dummy_input = torch.randn(1, 3, 32, 32, requires_grad=True)
 
     # Export the model
     torch.onnx.export(
