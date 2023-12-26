@@ -1,3 +1,5 @@
+import os
+
 import git
 import pytorch_lightning as pl
 import torch
@@ -90,6 +92,12 @@ def lightning_log(config):
         pl.callbacks.LearningRateMonitor(logging_interval="step"),
         pl.callbacks.DeviceStatsMonitor(),
         pl.callbacks.RichModelSummary(max_depth=config.callbacks.max_depth),
+        pl.callbacks.ModelCheckpoint(
+            dirpath=os.path.join(
+                config.artifacts.checkpoint_dirpath,
+                config.artifacts.experiment_name,
+            ),
+        ),
     ]
 
     trainer = pl.Trainer(

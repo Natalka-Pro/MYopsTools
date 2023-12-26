@@ -6,4 +6,4 @@ file.txt
 logs
 mlruns
 mlartifacts
-[0-9]*
+checkpoints

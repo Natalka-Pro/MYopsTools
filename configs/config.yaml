@@ -20,6 +20,7 @@ artifacts:
     # tracking_uri: "file:./logs"
     host: "127.0.0.1"
     port: 8080
+    checkpoint_dirpath: "checkpoints"
 
 callbacks:
     max_depth: 3
