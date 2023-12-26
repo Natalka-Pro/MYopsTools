@@ -29,7 +29,7 @@ class TestClass:
         correct_pred = 0
         n = 0
 
-        running_loss = 0
+        loss = 0
 
         with torch.no_grad():
             self.model.eval()
@@ -47,52 +47,62 @@ class TestClass:
                 n += y_true.size(0)
 
                 # Forward pass and record loss
-                loss = self.criterion(y_prob, y_true)
-                running_loss += loss.item() * X.size(0)
+                lo = self.criterion(y_prob, y_true)
+                loss += lo.item() * X.size(0)
 
         self.pred_true = pred_true.int()
         self.accuracy = (correct_pred.int() / n).item()
-        self.loss = running_loss / len(self.test_loader.dataset)
+        self.loss = loss / len(self.test_loader.dataset)
 
 
-def testing(config):
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+def save_to_csv(matrix, file):
+    print("<<< infer.save_to_csv:")
+    df = pd.DataFrame(matrix, columns=["Predicted labels", "True labels"])
+    df.to_csv(file)
+    print(
+        f"A matrix of size {tuple(matrix.shape)} ",
+        f"was written to the file \"{file}\"\n",
+        "Column names - \"Predicted labels\" and \"True labels\"",
+        sep="",
+    )
+    print(">>>")
+
+
+def infer(config):
+    print("<<< infer.infer:")
     device = torch.device(config.model.accelerator)
     print(f"Device type: {device}")
 
-    test_loader = MnistDataModule(
-        batch_size=config.infer.batch_size
-    ).test_dataloader()
     model = AlexNet(config.model.n_classes, config.model.dropout).to(device)
     model.load_state_dict(torch.load(config.infer.model_load))
     print(f"Model \"{config.infer.model_load}\" is loaded")
     criterion = nn.CrossEntropyLoss()
 
+    test_loader = MnistDataModule(
+        batch_size=config.infer.batch_size
+    ).test_dataloader()
+
     Testing = TestClass(model, criterion, test_loader, device)
     Testing.validate()
     pred_true = Testing.pred_true.to("cpu")
-    test_acc = Testing.accuracy
-    test_loss = Testing.loss
+    accuracy = Testing.accuracy
+    loss = Testing.loss
 
-    print(f"Validation accuracy = {test_acc:.4f}, loss = {test_loss:.4f}")
-
-    df = pd.DataFrame(pred_true, columns=["Predicted labels", "True labels"])
-    df.to_csv(config.infer.preds_file)
-    print(
-        f"A matrix of size {tuple(pred_true.size())} ",
-        f"was written to the file \"{config.infer.preds_file}\"\n",
-        "Column names - \"Predicted labels\" and \"True labels\"",
-        sep="",
-    )
+    print(f"Validation accuracy = {accuracy:.6f}, loss = {loss:.6f}")
+    save_to_csv(pred_true, config.infer.preds_file)
+    print(">>>")
 
 
-def testing_onnx(onnx_pyfunc, config):
+def infer_onnx(onnx_pyfunc, config):
+    print("<<< infer.infer_onnx:")
     # https://mlflow.org/docs/2.9.2/getting-started/intro-quickstart/index.html
     test_loader = MnistDataModule(
         batch_size=config.infer.batch_size
     ).test_dataloader()
 
     pred_true = np.empty((0, 2), int)  # size N x 2
+    criterion = nn.CrossEntropyLoss()
+    loss = 0
 
     for X, y_true in test_loader:
         X = X.detach().numpy()
@@ -101,24 +111,21 @@ def testing_onnx(onnx_pyfunc, config):
         y_pred = np.argmax(y_prob, axis=1)
         y_pred_true = np.stack([y_pred, y_true], axis=1)
         pred_true = np.append(pred_true, y_pred_true, axis=0)
+        y_prob = torch.from_numpy(y_prob)
+        lo = criterion(y_prob, y_true)
+        loss += lo.item() * X.shape[0]
 
     pred_true = pred_true.astype(int)
     accuracy = (pred_true[:, 0] == pred_true[:, 1]).sum() / len(pred_true)
-    print(f"Validation accuracy = {accuracy:.4f}")
+    loss = loss / len(test_loader.dataset)
+    print(f"Validation accuracy = {accuracy:.6f}, loss = {loss:.6f}")
 
-    df = pd.DataFrame(pred_true, columns=["Predicted labels", "True labels"])
-    df.to_csv(config.infer.preds_file)
-    print(
-        f"A matrix of size {tuple(pred_true.shape)} ",
-        f"was written to the file \"{config.infer.preds_file}\"\n",
-        "Column names - \"Predicted labels\" and \"True labels\"",
-        sep="",
-    )
+    save_to_csv(pred_true, config.infer.preds_file)
+    print(">>>")
 
 
 def run_server(config):
     # https://mlflow.org/docs/latest/models.html#onnx-pyfunc-usage-example
-    onnx_model = onnx.load_model(config.train.model_save_onnx)
     X = torch.randn(64, 3, 32, 32)
 
     mlflow.set_tracking_uri(
@@ -129,6 +136,9 @@ def run_server(config):
     model = AlexNet(config.model.n_classes, config.model.dropout).to(
         torch.device(config.model.accelerator)
     )
+
+    onnx_model = onnx.load_model(config.train.model_save_onnx)
+    print(f"Model \"{config.train.model_save_onnx}\" is loaded")
 
     with mlflow.start_run():
         signature = mlflow.models.infer_signature(
@@ -141,6 +151,6 @@ def run_server(config):
     # load the logged model and make a prediction
     onnx_pyfunc = mlflow.pyfunc.load_model(model_info.model_uri)
 
-    testing_onnx(onnx_pyfunc, config)
+    infer_onnx(onnx_pyfunc, config)
     # predictions = onnx_pyfunc.predict(X.numpy())
     # print(predictions)

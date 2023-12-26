@@ -59,10 +59,12 @@ class TrainModule(pl.LightningModule):
         return optimizer
 
     def save_model(self):
+        print("<<< train.TrainModule.save_model:")
         torch.save(self.model.state_dict(), self.config.train.model_save)
         print(
             f"Model is saved with the name \"{self.config.train.model_save}\""
         )
+        print(">>>")
 
 
 def lightning_log(config):

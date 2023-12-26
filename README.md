@@ -17,9 +17,15 @@ pre-commit install
 pre-commit run -a
 ```
 
-Запуск сервера mlflow:
+Запуск сервера mlflow (mlruns):
 ```bash
 mlflow server --host 127.0.0.1 --port 8080
+```
+
+Запуск сервера triton:
+```bash
+cd triton/
+docker-compose up
 ```
 
 Команды модели:
@@ -27,6 +33,7 @@ mlflow server --host 127.0.0.1 --port 8080
 python commands.py train
 python commands.py infer
 python commands.py run_server
+python commands.py client
 ```
 
 ## Описание ML задачи

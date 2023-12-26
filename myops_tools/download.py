@@ -4,6 +4,7 @@ from dvc.api import DVCFileSystem
 
 
 def main(config):
+    print("<<< download.main:")
     if os.path.isdir(f"./data/{config.dataset}"):
         print(f"The folder \"{config.dataset}\" exists")
     else:
@@ -12,3 +13,4 @@ def main(config):
         fs = DVCFileSystem(url, rev="main")
         fs.get("./data", "./", recursive=True)
         print("Dataset download completed")
+    print(">>>")

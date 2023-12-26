@@ -16,7 +16,7 @@ train:
     devices: "auto"
 
 artifacts:
-    experiment_name: "experiment_2"
+    experiment_name: "experiment_1"
     # tracking_uri: "file:./logs"
     host: "127.0.0.1"
     port: 8080
