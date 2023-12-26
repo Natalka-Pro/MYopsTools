@@ -125,6 +125,7 @@ def infer_onnx(onnx_pyfunc, config):
 
 
 def run_server(config):
+    print("<<< infer.run_server:")
     # https://mlflow.org/docs/latest/models.html#onnx-pyfunc-usage-example
     X = torch.randn(64, 3, 32, 32)
 
@@ -154,3 +155,4 @@ def run_server(config):
     infer_onnx(onnx_pyfunc, config)
     # predictions = onnx_pyfunc.predict(X.numpy())
     # print(predictions)
+    print(">>>")

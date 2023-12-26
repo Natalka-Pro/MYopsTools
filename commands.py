@@ -2,7 +2,7 @@ import fire
 from hydra import compose, initialize
 
 from myops_tools.client import main as client
-from myops_tools.download import main as download
+from myops_tools.download import load_dataset, load_onnx
 from myops_tools.infer import infer, run_server
 from myops_tools.train import main as train
 
@@ -15,25 +15,26 @@ def hydra_config():
 
 def training():
     config = hydra_config()
-    download(config.download)
+    load_dataset(config.download)
     train(config)
 
 
 def infering():
     config = hydra_config()
-    download(config.download)
+    load_dataset(config.download)
     infer(config)
 
 
 def running_server():
     config = hydra_config()
-    download(config.download)
+    load_dataset(config.download)
+    load_onnx(config)
     run_server(config)
 
 
 def running_client():
     config = hydra_config()
-    download(config.download)
+    load_dataset(config.download)
     client(config)
 
 
