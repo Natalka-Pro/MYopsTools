@@ -2,7 +2,7 @@
 
 ## Инструкция по запуску пакета в чистом окружении:
 ```bash
-git https://github.com/Natalka-Pro/myops_tools.git
+git clone https://github.com/Natalka-Pro/myops_tools.git
 cd myops_tools/
 ```
 
@@ -17,7 +17,7 @@ pre-commit install
 pre-commit run -a
 ```
 
-Запуск сервера mlflow (mlruns):
+Запуск сервера mlflow (создаёт mlruns):
 ```bash
 mlflow server --host 127.0.0.1 --port 8080
 ```
@@ -29,12 +29,32 @@ docker-compose up
 ```
 
 Команды модели:
+
+Обучение (логи в mlruns, checkpoints и на сервер mlflow):
 ```bash
 python commands.py train
+```
+
+Предсказание, использует model.pth:
+```bash
 python commands.py infer
+```
+
+Предсказание, использует model.onnx (логи в mlruns, mlartifacts и на сервер mlflow):
+```bash
 python commands.py run_server
+```
+
+Клиент заходит на тритон-сервер (использует model.onnx):
+```bash
 python commands.py client
 ```
+
+## Системная конфигурация
+- OS и версия: Ubuntu 20.04.6 LTS
+- Модель CPU: Intel(R) Core(TM) i7-2600 CPU @ 3.40GHz
+- vCPU: 8
+- RAM: 8 Gi
 
 ## Описание ML задачи
 Классификация рукописных цифр - датасет [torchvision.datasets.MNIST](https://pytorch.org/vision/main/generated/torchvision.datasets.MNIST.html).
@@ -43,6 +63,79 @@ python commands.py client
 
 Задача решается очень упрощённой свёрточной нейронной сетью AlexNet.
 
+## Структура model_repository
+
+    model_repository
+    └── onnx-AlexNet
+        ├── 1
+        │   └── model.onnx
+        └── config.pbtxt
+
+
+## SDK утилита perf_analyzer
+
+бекенд: onnxruntime_onnx
+
+```bash
+docker run -it --rm --net=host nvcr.io/nvidia/tritonserver:23.04-py3-sdk
+perf_analyzer -m onnx-AlexNet -u localhost:8500 --concurrency-range 8:8 --shape images:1,3,32,32 --measurement-interval 10000
+```
+
+До оптимизаций:
+
+    Request concurrency: 8
+        Client:
+            Request count: 279222
+            Throughput: 7749.65 infer/sec
+            Avg latency: 1031 usec (standard deviation 676 usec)
+            p50 latency: 918 usec
+            p90 latency: 1495 usec
+            p95 latency: 1771 usec
+            p99 latency: 3640 usec
+            Avg HTTP time: 1023 usec (send/recv 92 usec + response wait 931 usec)
+        Server:
+            Inference count: 287303
+            Execution count: 114492
+            Successful request count: 287303
+            Avg request latency: 424 usec (overhead 129 usec + queue 172 usec + compute input 24 usec + compute infer 85 usec + compute output 13 usec)
+
+    Inferences/Second vs. Client Average Batch Latency
+    Concurrency: 8, throughput: 7749.65 infer/sec, latency 1031 usec
+
+
+После оптимизаций:
+
+    Request concurrency: 8
+        Client:
+            Request count: 291643
+            Throughput: 8091.21 infer/sec
+            Avg latency: 987 usec (standard deviation 455 usec)
+            p50 latency: 917 usec
+            p90 latency: 1341 usec
+            p95 latency: 1513 usec
+            p99 latency: 2016 usec
+            Avg HTTP time: 981 usec (send/recv 90 usec + response wait 891 usec)
+        Server:
+            Inference count: 291647
+            Execution count: 104061
+            Successful request count: 291647
+            Avg request latency: 367 usec (overhead 59 usec + queue 199 usec + compute input 23 usec + compute infer 74 usec + compute output 12 usec)
+
+    Inferences/Second vs. Client Average Batch Latency
+    Concurrency: 8, throughput: 8091.21 infer/sec, latency 987 usec
+
+## Мотивация выбора
+
+
+| dynamic_batching  | - | 4000 | 2000 | 1000 | 500 | 100 | 50 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| throughput  | 7749.65  | 1687.99 | 2975.24 | 4825.17 | 6944.01 | 8091.21 | 8033.21 |
+| latency  | 1031  | 4737 | 2687 | 1656 | 1150 | 987 | 994 |
+
+Прочерк соответсвует `dynamic_batching: { }`, далее указаны значения параметра max_queue_delay_microseconds.
+
+Из таблицы видно, что наибольший throughput и наименьший latency при max_queue_delay_microseconds = 100.
+Увеличение количества instance-ов приходит только к ухудшению этих метрик.
 
 ---
 # Первая домашняя работа
